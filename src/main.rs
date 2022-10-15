@@ -25,6 +25,7 @@ fn main() {
     let mut remaining_guesses = total_guesses;
     let mut current_set = game.get_current_set().clone();
     let mut current_words:Rc<HashSet<String>> = Rc::new(HashSet::new());
+    let mut input: Vec<String> = Vec::new();
     while continue_game && remaining_guesses > 0 {
         println!("You have {} guesses left",remaining_guesses);
         print!("Used letters: [");
@@ -41,7 +42,6 @@ fn main() {
         println!("Word: {}", current_set);
 
         let mut valid_input = false;
-        let mut input: Vec<String> = Vec::new();
         let mut guess = String::new();
         let mut guess_to_use;
 

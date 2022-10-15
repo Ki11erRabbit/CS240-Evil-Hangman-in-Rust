@@ -106,7 +106,7 @@ impl EvilHangmanGame {
                     }
 
                     if temp_set.len() != 0 {
-                        println!("{} words {}",new_key_lv3, temp_set.len());
+                        //println!("{} words {}",new_key_lv3, temp_set.len());
                         self.word_groups.as_mut().unwrap().insert(new_key_lv3, Rc::new(temp_set));
                     }
 
