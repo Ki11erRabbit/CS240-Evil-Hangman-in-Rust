@@ -110,6 +110,7 @@ impl EvilHangmanGame {
 
                     if temp_set.len() != 0 {
                         //println!("{} words {}",new_key_lv3, temp_set.len());
+                        //println!("{:?}",temp_set);
                         self.word_groups.as_mut().unwrap().insert(new_key_lv3, Rc::new(temp_set));
                     }
 
@@ -125,7 +126,7 @@ impl EvilHangmanGame {
         }
         //println!("{} words {}",self.current_set.as_ref().as_ref().unwrap(), temp_set.len());
         self.word_groups.as_mut().expect("no hashmap").insert(self.current_set.as_ref().as_ref().expect("no current set").to_string(), Rc::new(temp_set));
-
+        //println!("HashMap {:?}",self.word_groups);
         let mut new_key: Option<&String> = None;
         let mut new_set: Option<&Rc<HashSet<String>>> = None;
         
@@ -155,6 +156,7 @@ impl EvilHangmanGame {
                     new_set = Some(val);
                 }
             }
+            //println!("{:?}", new_set);
             //println!("{} words {}", new_key.unwrap(), new_set.unwrap().len());
         }
 
@@ -164,15 +166,21 @@ impl EvilHangmanGame {
         Ok(new_set.unwrap())
     }
 
-    fn rightness(key:&String, guess:&str) -> u32 {
-        let mut sum:u32 = 0;
-        let mut pos:u32 = 1;
-        for i in key.len()-1..0 {
-           if key.get(i..i).unwrap() == guess {
-            sum += pos;
-           } 
-           pos *= 10;
+    fn rightness(key:&String, guess:&str) -> usize {
+        //println!("key: {}", key);
+        let mut sum:usize = 0;
+        let mut pos:usize = 1;
+        //let mut j:usize = 0;
+        for i in (0..key.len()).rev() {
+            //println!("{:?}", key.get(i..=i));
+            if key.get(i..=i).unwrap() == guess {
+                sum += pos;
+            } 
+            //println!("{}",j);
+            //j += 1;
+            pos *= 10;
         }
+        //println!("rightness {}", sum);
         sum
     }
 
@@ -188,6 +196,11 @@ impl EvilHangmanGame {
 #[cfg(test)]
 mod tests {
     use super::*;
+    macro_rules! open_file {
+        ($file_name:ty) => (File::open($file_name).unwrap());
+        ($file_name:expr, $error_msg:literal) => (
+            &mut File::open($file_name).expect($error_msg))
+    }
 
     const DICTIONARY:&str = "dictionary.txt";
     const SMALL_DICTIONARY:&str = "small.txt";
@@ -203,30 +216,30 @@ mod tests {
     #[test]
     fn test_empty_file_load() {
         let mut game = setup();
-        assert_eq!(EMPTY_DICT_ERROR,game.start_game(&mut File::open(EMPTY_DICTIONARY).expect("dictionary not found"), 4),"Failed to return empty dictionary error");
-        assert_eq!(EMPTY_DICT_ERROR,game.start_game(&mut File::open(EMPTY_DICTIONARY).expect("dictionary not found"), 1),"Failed to return empty dictionary error");
-        assert_eq!(EMPTY_DICT_ERROR,game.start_game(&mut File::open(EMPTY_DICTIONARY).expect("dictionary not found"), 15),"Failed to return empty dictionary error");
+        assert_eq!(EMPTY_DICT_ERROR,game.start_game(&mut open_file!(EMPTY_DICTIONARY,"dictionary not found"), 4),"Failed to return empty dictionary error");
+        assert_eq!(EMPTY_DICT_ERROR,game.start_game(&mut open_file!(EMPTY_DICTIONARY,"dictionary not found"), 1),"Failed to return empty dictionary error");
+        assert_eq!(EMPTY_DICT_ERROR,game.start_game(&mut open_file!(EMPTY_DICTIONARY,"dictionary not found"), 15),"Failed to return empty dictionary error");
     }
 
     #[test]
     fn test_word_length() {
         let mut game = setup();
-        assert_eq!(EMPTY_DICT_ERROR,game.start_game(&mut File::open(EMPTY_DICTIONARY).expect("dictionary not found"),0),"Failed to return empty dictionary error");
+        assert_eq!(EMPTY_DICT_ERROR,game.start_game(&mut open_file!(EMPTY_DICTIONARY,"dictionary not found"),0),"Failed to return empty dictionary error");
     }
 
     #[test]
     fn test_load_files() {
         let mut game = setup();
-        assert_eq!(SUCCESSFUL_LOAD,game.start_game(&mut File::open(DICTIONARY).expect("dictionary not found"),2),"Loading file with dictionary gave an error");
-        assert_eq!(SUCCESSFUL_LOAD,game.start_game(&mut File::open(DICTIONARY).expect("dictionary not found"),10),"Loading file with dictionary gave an error");
-        assert_eq!(SUCCESSFUL_LOAD,game.start_game(&mut File::open(SMALL_DICTIONARY).expect("dictionary not found"),10),"Loading file with dictionary gave an error");
+        assert_eq!(SUCCESSFUL_LOAD,game.start_game(&mut open_file!(DICTIONARY,"dictionary not found"),2),"Loading file with dictionary gave an error");
+        assert_eq!(SUCCESSFUL_LOAD,game.start_game(&mut open_file!(DICTIONARY,"dictionary not found"),10),"Loading file with dictionary gave an error");
+        assert_eq!(SUCCESSFUL_LOAD,game.start_game(&mut open_file!(SMALL_DICTIONARY,"dictionary not found"),10),"Loading file with dictionary gave an error");
     }
 
     #[test]
     fn test_guess_already_made() {
         let mut game = setup();
 
-        game.start_game(&mut File::open(DICTIONARY).expect("dictionary not found"),2).expect("Empty Dictionary");
+        game.start_game(&mut open_file!(DICTIONARY,"dictionary not found"),2).expect("Empty Dictionary");
 
         game.make_guess('a').expect("Error");
 
@@ -243,7 +256,7 @@ mod tests {
     fn test_2_letter_word() {
         let mut game = setup();
 
-        game.start_game(&mut File::open(DICTIONARY).expect("dictionary not found"),2).expect("Dictionary that contains words is counted as empty");
+        game.start_game(&mut open_file!(DICTIONARY,"dictionary not found"),2).expect("Dictionary that contains words is counted as empty");
 
         let possible_words = game.make_guess('a').unwrap();
 
@@ -262,5 +275,221 @@ mod tests {
         let correct_possibilities:HashSet<String> = temp_vec.into_iter().collect();
 
         assert_eq!(correct_possibilities,**possible_words, "Incorrect set contents after second guess");
+    }
+
+    #[test]
+    fn test_3_letter_word() {
+        let mut game = setup();
+        game.start_game(&mut open_file!(DICTIONARY,"dictionary not found"),3).expect("Dictionary that contains words is counted as empty");
+        let possible_words = game.make_guess('a').unwrap();
+
+        assert_eq!(665, possible_words.len(),"Incorrect size after 1 guess");
+        for word in possible_words.iter() {
+            assert!(!word.contains('a'),"Incorrect contents after 1 guess");
+        }
+
+        let possible_words = game.make_guess('o').unwrap();
+
+        assert_eq!(456, possible_words.len(), "Incorrect size after 2nd guess");
+        for word in possible_words.iter() {
+            assert!(!word.contains('o'),"Incorrect contents after 2nd guess");
+        }
+
+        game.make_guess('e').unwrap();
+        game.make_guess('u').unwrap();
+        let possible_words = game.make_guess('i').unwrap();
+
+        assert_eq!(110,possible_words.len(),"Incorrect size after 5th guess");
+        for word in possible_words.iter() {
+            assert!(!word.contains('e'),"Incorrect contents after 5nd guess");
+            assert!(!word.contains('u'),"Incorrect contents after 5nd guess");
+            assert!(word.contains('i'),"Incorrect contents after 5nd guess");
+        }
+
+        assert!(possible_words.contains("bib"), "Incorrect contents after 5th guess");
+        assert!(possible_words.contains("fix"), "Incorrect contents after 5th guess");
+        assert!(possible_words.contains("zit"), "Incorrect contents after 5th guess");
+    }
+
+    #[test]
+    fn test_10_letter_word() {
+        let mut game = setup();
+        game.start_game(open_file!(DICTIONARY,"dictionary not found"), 10).expect("Dictionary that contains words is counted as empty");
+
+        let possible_words = game.make_guess('t').unwrap();
+
+        assert_eq!(5395, possible_words.len(), "Incorrect size after 1 guess");
+        for word in possible_words.iter() {
+            assert!(!word.contains('t'),"Incorrect contents after 1 guess");
+        }
+
+        let possible_words = game.make_guess('e').unwrap();
+
+        assert_eq!(1091,possible_words.len(),"Incorrect size after 2nd guess");
+        assert!(possible_words.contains("airmailing"), "Incorrect contents after 2nd guess");
+        assert!(possible_words.contains("micrograms"), "Incorrect contents after 2nd guess");
+        assert!(possible_words.contains("signalling"), "Incorrect contents after 2nd guess");
+        for word in possible_words.iter() {
+            assert!(!word.contains('e'),"Incorrect contents after 2nd guess");
+        }
+
+        game.make_guess('a').unwrap();
+        game.make_guess('i').unwrap();
+        game.make_guess('r').unwrap();
+        let possible_words = game.make_guess('s').unwrap();
+
+        assert_eq!(24, possible_words.len(),"Incorrect size after 6th guess");
+        for word in possible_words.iter() {
+            assert!(!word.contains('a'),"Incorrect contents after 6th guess");
+        }
+        assert!(possible_words.contains("conglobing"), "Incorrect contents after 6th guess");
+        assert!(possible_words.contains("flummoxing"), "Incorrect contents after 6th guess");
+        assert!(possible_words.contains("unmuzzling"), "Incorrect contents after 6th guess");
+
+        game.make_guess('u').unwrap();
+        game.make_guess('c').unwrap();
+        game.make_guess('p').unwrap();
+        let possible_words = game.make_guess('f').unwrap();
+        assert_eq!(1, possible_words.len(),"Incorrect size aftre 10th guess");
+        assert!(possible_words.contains("hobnobbing"), "Incorrect contents after 10th guess");
+    }
+
+    #[test]
+    fn test_largest_group() {
+        let mut game = setup();
+
+        game.start_game(open_file!(SMALL_DICTIONARY, "dictionary not found"), 6).expect("Dictionary that contains words is counted as empty");
+
+        let possible_words = game.make_guess('u').unwrap();
+
+        assert_eq!(5,possible_words.len(), "Incorrect size after 1 guess");
+        assert!(!possible_words.contains("chubby"), "Incorrect contents after 1 guess");
+
+        let possible_words = game.make_guess('l').unwrap();
+
+        assert_eq!(3, possible_words.len(), "Incorrect contents after 2nd guess");
+        assert!(!possible_words.contains("little"), "Incorrect contents after 2nd guess");
+        assert!(!possible_words.contains("nickle"), "Incorrect contents after 2nd guess");
+
+        let possible_words = game.make_guess('s').unwrap();
+
+        assert_eq!(2,possible_words.len(), "Incorrect size after 3rd guess");
+        assert!(!possible_words.contains("editor"), "Incorrect contents after 3rd guess");
+        assert!(possible_words.contains("brakes"), "Incorrect contents after 3rd guess");
+        assert!(possible_words.contains("chicks"), "Incorrect contents after 3rd guess");
+    }
+
+    #[test]
+    fn test_letter_does_not_appear() {
+        let mut game = setup();
+        game.start_game(open_file!(SMALL_DICTIONARY,"dictionary not found"), 5)
+            .expect("Dictionary that contains words is counted as empty");
+        
+        let possible_words = game.make_guess('a').unwrap();
+
+        assert_eq!(4, possible_words.len(), "Incorrect size after 1 guess");
+        assert!(!possible_words.contains("lambs"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("lakes"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("toner"), "Incorrect contents after 1 guess");
+
+        let possible_words = game.make_guess('o').unwrap();
+
+        assert_eq!(2, possible_words.len(), "Incorrect contents after 2nd guess");
+        assert!(!possible_words.contains("tombs"), "Incorrect contents after 2nd guess");
+        assert!(!possible_words.contains("toner"), "Incorrect contents after 2nd guess");
+        assert!(possible_words.contains("title"), "Incorrect contents after 2nd guess");
+        assert!(possible_words.contains("silly"), "Incorrect contents after 2nd guess");
+
+        let possible_words = game.make_guess('t').unwrap();
+        assert_eq!(1, possible_words.len(), "Incorrect contents after 3rd guess");
+        assert!(!possible_words.contains("title"), "Incorrect contents after 3rd guess");
+        assert!(possible_words.contains("silly"), "Incorrect contents after 3rd guess");
+    }
+
+    #[test]
+    fn test_fewest_instances() {
+        let mut game = setup();
+        game.start_game(open_file!(SMALL_DICTIONARY,"dictionary not found"), 7)
+            .expect("Dictionary that contains words is counted as empty");
+
+        let possible_words = game.make_guess('z').unwrap();
+        
+        assert_eq!(2, possible_words.len(), "Incorrect size after 1 guess");
+        assert!(!possible_words.contains("zyzzyva"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("zizzled"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("buzzwig"), "Incorrect contents after 1 guess");
+
+        game.start_game(open_file!(SMALL_DICTIONARY,"dictionary not found"), 8)
+            .expect("Dictionary that contains words is counted as empty");
+
+        let possible_words = game.make_guess('e').unwrap();
+
+        assert_eq!(4, possible_words.len(), "Incorrect size after 1 guess");
+        assert!(!possible_words.contains("bythelee"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("dronebee"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("parmelee"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("tuskegee"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("gardened"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("forgemen"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("lingerer"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("ohmmeter"), "Incorrect contents after 1 guess");        
+    }
+
+    #[test]
+    fn test_rightmost_letter() {
+        let mut game = setup();
+        game.start_game(open_file!(SMALL_DICTIONARY,"dictionary not found"), 3)
+            .expect("Dictionary that contains words is counted as empty");
+
+        let possible_words = game.make_guess('a').unwrap();
+
+        assert_eq!(2, possible_words.len(), "Incorrect word count after 1st guess.");
+        assert!(!possible_words.contains("abs"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("are"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("bar"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("tag"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("bra"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("moa"), "Incorrect contents after 1 guess");
+
+        game.start_game(open_file!(SMALL_DICTIONARY,"dictionary not found"), 12)
+            .expect("Dictionary that contains words is counted as empty");
+
+        let possible_words = game.make_guess('h').unwrap();
+
+        assert_eq!(2, possible_words.len(), "Incorrect word count after 1st guess");
+        assert!(!possible_words.contains("charmillions"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("phylogenesis"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("antimonarchy"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("boxingweight"), "Incorrect contents after 1 guess");
+    }
+
+    #[test]
+    fn test_rightmost_of_multiple_instances() { 
+        let mut game = setup();
+        game.start_game(open_file!(SMALL_DICTIONARY,"dictionary not found"), 9)
+            .expect("Dictionary that contains words is counted as empty");
+
+        let possible_words = game.make_guess('g').unwrap();
+        //println!("{:?}", possible_words);
+        assert_eq!(2, possible_words.len(), "Incorrect word count after 1st guess");
+        assert!(!possible_words.contains("huggingly"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("legginged"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("dugogogue"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("logogogue"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("foglogged"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("pigwiggen"), "Incorrect contents after 1 guess");
+        
+        game.start_game(open_file!(SMALL_DICTIONARY,"dictionary not found"), 10)
+            .expect("Dictionary that contains words is counted as empty");
+
+        let possible_words = game.make_guess('t').unwrap();
+
+        assert_eq!(2,possible_words.len(), "Incorrect word count after 1st guess");
+        assert!(!possible_words.contains("thelittleo"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("teakettles"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("titeration"), "Incorrect contents after 1 guess");
+        assert!(!possible_words.contains("tetrastoon"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("triacetate"), "Incorrect contents after 1 guess");
+        assert!(possible_words.contains("tennantite"), "Incorrect contents after 1 guess");
     }
 }
