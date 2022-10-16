@@ -21,12 +21,11 @@ fn main() {
 
 
 
-    let continue_game = true;
     let mut remaining_guesses = total_guesses;
     let mut current_set = game.get_current_set().clone();
     let mut current_words:Rc<HashSet<String>> = Rc::new(HashSet::new());
     let mut input: Vec<String> = Vec::new();
-    while continue_game && remaining_guesses > 0 {
+    while remaining_guesses > 0 {
         println!("You have {} guesses left",remaining_guesses);
         print!("Used letters: [");
         let mut index = 0;
